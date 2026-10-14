@@ -1,0 +1,1247 @@
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+
+local player = Players.LocalPlayer
+
+local NUT_ICON = "rbxassetid://12920013780"
+
+local proximityRange = 15
+
+local function applyPrompt(prompt)
+	if not prompt:IsA("ProximityPrompt") then return end
+
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = proximityRange
+
+	prompt:GetPropertyChangedSignal("MaxActivationDistance"):Connect(function()
+		if prompt.MaxActivationDistance ~= proximityRange then
+			prompt.MaxActivationDistance = proximityRange
+		end
+	end)
+
+	prompt:GetPropertyChangedSignal("HoldDuration"):Connect(function()
+		if prompt.HoldDuration ~= 0 then
+			prompt.HoldDuration = 0
+		end
+	end)
+end
+
+for _, obj in ipairs(workspace:GetDescendants()) do
+	applyPrompt(obj)
+end
+
+workspace.DescendantAdded:Connect(applyPrompt)
+
+local function setProximityRange(value)
+	proximityRange = value
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("ProximityPrompt") then
+			obj.MaxActivationDistance = value
+		end
+	end
+end
+
+local connection
+local snappyEnabled = false
+
+local function setupCharacter(character)
+	if connection then
+		connection:Disconnect()
+		connection = nil
+	end
+
+	local humanoid = character:WaitForChild("Humanoid")
+	local root = character:WaitForChild("HumanoidRootPart")
+
+	if not snappyEnabled then return end
+
+	connection = RunService.Heartbeat:Connect(function()
+		if not character.Parent or humanoid.Health <= 0 then return end
+
+		local velocity = root.AssemblyLinearVelocity
+		local move = humanoid.MoveDirection
+		local horizontal = Vector3.new(velocity.X, 0, velocity.Z)
+
+		if move.Magnitude > 0.01 then
+			local speed = horizontal.Magnitude
+			if speed > 0.05 then
+				local dir = move.Unit
+				root.AssemblyLinearVelocity = Vector3.new(dir.X * speed, velocity.Y, dir.Z * speed)
+			end
+		else
+			root.AssemblyLinearVelocity = Vector3.new(0, velocity.Y, 0)
+		end
+	end)
+end
+
+local function setSnappy(state)
+	snappyEnabled = state
+	if snappyEnabled then
+		if player.Character then setupCharacter(player.Character) end
+	else
+		if connection then
+			connection:Disconnect()
+			connection = nil
+		end
+	end
+end
+
+if player.Character then setupCharacter(player.Character) end
+player.CharacterAdded:Connect(setupCharacter)
+
+local BG_DEEP      = Color3.fromRGB(24, 26, 30)
+local BG_MAIN      = Color3.fromRGB(34, 37, 42)
+local BG_TOP       = Color3.fromRGB(44, 48, 54)
+local BG_BTN       = Color3.fromRGB(40, 43, 48)
+local BG_BTN_TOP   = Color3.fromRGB(58, 62, 68)
+local BG_BTN_BOT   = Color3.fromRGB(28, 30, 34)
+local BORDER       = Color3.fromRGB(64, 68, 76)
+local BORDER_SOFT  = Color3.fromRGB(50, 54, 60)
+local TEXT_MAIN    = Color3.fromRGB(228, 230, 234)
+local TEXT_DIM     = Color3.fromRGB(150, 155, 165)
+local ACCENT       = Color3.fromRGB(255, 145, 0)
+local ACCENT_DARK  = Color3.fromRGB(180, 92, 0)
+local ACCENT_LIGHT = Color3.fromRGB(255, 190, 90)
+local GREEN        = Color3.fromRGB(46, 190, 100)
+local GREEN_DARK   = Color3.fromRGB(22, 120, 60)
+local TRACK_OFF    = Color3.fromRGB(56, 60, 66)
+local TRACK_OFF_D  = Color3.fromRGB(38, 40, 44)
+local KNOB_COLOR   = Color3.fromRGB(235, 238, 242)
+local KNOB_SHADE   = Color3.fromRGB(180, 185, 192)
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CortyaGui"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local loadingFrame = Instance.new("Frame")
+loadingFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+loadingFrame.Size = UDim2.new(0, 0, 0, 0)
+loadingFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+loadingFrame.BackgroundColor3 = BG_MAIN
+loadingFrame.BorderSizePixel = 0
+loadingFrame.Parent = screenGui
+
+local loadingCorner = Instance.new("UICorner")
+loadingCorner.CornerRadius = UDim.new(0, 22)
+loadingCorner.Parent = loadingFrame
+
+local loadingStroke = Instance.new("UIStroke")
+loadingStroke.Color = BORDER
+loadingStroke.Thickness = 2.5
+loadingStroke.Transparency = 0
+loadingStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+loadingStroke.Parent = loadingFrame
+
+local loadingStuds = Instance.new("ImageLabel")
+loadingStuds.Size = UDim2.new(1, 0, 1, 0)
+loadingStuds.BackgroundTransparency = 1
+loadingStuds.Image = "rbxassetid://7447638591"
+loadingStuds.ImageColor3 = Color3.fromRGB(255, 235, 210)
+loadingStuds.ImageTransparency = 0.75
+loadingStuds.ScaleType = Enum.ScaleType.Tile
+loadingStuds.TileSize = UDim2.new(0, 26, 0, 26)
+loadingStuds.ZIndex = 0
+loadingStuds.Parent = loadingFrame
+
+local loadingTop = Instance.new("Frame")
+loadingTop.Size = UDim2.new(1, 0, 0, 34)
+loadingTop.BackgroundColor3 = BG_TOP
+loadingTop.BorderSizePixel = 0
+loadingTop.ZIndex = 2
+loadingTop.Parent = loadingFrame
+
+local loadingTopCorner = Instance.new("UICorner")
+loadingTopCorner.CornerRadius = UDim.new(0, 22)
+loadingTopCorner.Parent = loadingTop
+
+local loadingTopMask = Instance.new("Frame")
+loadingTopMask.Size = UDim2.new(1, 0, 0, 20)
+loadingTopMask.Position = UDim2.new(0, 0, 1, -20)
+loadingTopMask.BackgroundColor3 = BG_TOP
+loadingTopMask.BorderSizePixel = 0
+loadingTopMask.ZIndex = 2
+loadingTopMask.Parent = loadingTop
+
+local loadingAccent = Instance.new("Frame")
+loadingAccent.Size = UDim2.new(1, 0, 0, 3)
+loadingAccent.Position = UDim2.new(0, 0, 1, -3)
+loadingAccent.BackgroundColor3 = ACCENT
+loadingAccent.BorderSizePixel = 0
+loadingAccent.ZIndex = 3
+loadingAccent.Parent = loadingTop
+
+local nutIcon = Instance.new("ImageLabel")
+nutIcon.Size = UDim2.new(0, 76, 0, 76)
+nutIcon.Position = UDim2.new(0.5, -38, 0, 26)
+nutIcon.BackgroundTransparency = 1
+nutIcon.Image = NUT_ICON
+nutIcon.ZIndex = 4
+nutIcon.Parent = loadingFrame
+
+local loadingTitle = Instance.new("TextLabel")
+loadingTitle.Size = UDim2.new(1, 0, 0, 26)
+loadingTitle.Position = UDim2.new(0, 0, 0, 106)
+loadingTitle.BackgroundTransparency = 1
+loadingTitle.Text = "Cortya suped duper gui limited edition"
+loadingTitle.TextColor3 = ACCENT
+loadingTitle.Font = Enum.Font.GothamBlack
+loadingTitle.TextSize = 22
+loadingTitle.ZIndex = 4
+loadingTitle.Parent = loadingFrame
+
+local barBg = Instance.new("Frame")
+barBg.Size = UDim2.new(1, -80, 0, 14)
+barBg.Position = UDim2.new(0, 40, 1, -58)
+barBg.BackgroundColor3 = BG_DEEP
+barBg.BorderSizePixel = 0
+barBg.ZIndex = 3
+barBg.Parent = loadingFrame
+
+local barBgCorner = Instance.new("UICorner")
+barBgCorner.CornerRadius = UDim.new(1, 0)
+barBgCorner.Parent = barBg
+
+local barBgStroke = Instance.new("UIStroke")
+barBgStroke.Color = BORDER
+barBgStroke.Thickness = 1
+barBgStroke.Transparency = 0.3
+barBgStroke.Parent = barBg
+
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.new(0, 0, 1, 0)
+barFill.BackgroundColor3 = ACCENT
+barFill.BorderSizePixel = 0
+barFill.ZIndex = 4
+barFill.Parent = barBg
+
+local barFillCorner = Instance.new("UICorner")
+barFillCorner.CornerRadius = UDim.new(1, 0)
+barFillCorner.Parent = barFill
+
+local barFillGradient = Instance.new("UIGradient")
+barFillGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, ACCENT_LIGHT),
+	ColorSequenceKeypoint.new(1, ACCENT),
+})
+barFillGradient.Parent = barFill
+
+local statusText = Instance.new("TextLabel")
+statusText.Size = UDim2.new(1, 0, 0, 20)
+statusText.Position = UDim2.new(0, 0, 1, -30)
+statusText.BackgroundTransparency = 1
+statusText.Text = "Загрузка..."
+statusText.TextColor3 = TEXT_DIM
+statusText.Font = Enum.Font.GothamBold
+statusText.TextSize = 15
+statusText.ZIndex = 4
+statusText.Parent = loadingFrame
+
+TweenService:Create(loadingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	Size = UDim2.new(0, 420, 0, 200),
+}):Play()
+
+local steps = {
+	{0.25, "Подключение..."},
+	{0.5, "Загрузка модулей..."},
+	{0.75, "Инициализация..."},
+	{1, "Готово!"},
+}
+
+local loadingDone = false
+
+task.spawn(function()
+	for _, step in ipairs(steps) do
+		local progress, text = step[1], step[2]
+		statusText.Text = text
+		TweenService:Create(barFill, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(progress, 0, 1, 0),
+		}):Play()
+		task.wait(0.4)
+	end
+
+	task.wait(0.3)
+
+	TweenService:Create(loadingFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		Size = UDim2.new(0, 0, 0, 0),
+	}):Play()
+
+	for _, child in ipairs(loadingFrame:GetDescendants()) do
+		if child:IsA("TextLabel") then
+			TweenService:Create(child, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+		elseif child:IsA("Frame") then
+			TweenService:Create(child, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
+		elseif child:IsA("ImageLabel") then
+			TweenService:Create(child, TweenInfo.new(0.3), { ImageTransparency = 1 }):Play()
+		elseif child:IsA("UIStroke") then
+			TweenService:Create(child, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+		end
+	end
+
+	task.wait(0.5)
+	loadingFrame:Destroy()
+	loadingDone = true
+end)
+
+local DRAG_THRESHOLD = 6
+local CLICK_MAX_TIME = 0.25
+
+local function makeClickOrDrag(frame: GuiObject, onClick: () -> ())
+	local dragging = false
+	local dragStartMouse: Vector2? = nil
+	local dragStartFramePos: UDim2? = nil
+	local pressTime = 0
+	local moved = false
+	local inputChangedConn: RBXScriptConnection? = nil
+	local inputEndedConn: RBXScriptConnection? = nil
+
+	local function stopTracking()
+		if inputChangedConn then inputChangedConn:Disconnect() inputChangedConn = nil end
+		if inputEndedConn then inputEndedConn:Disconnect() inputEndedConn = nil end
+		dragging = false
+		dragStartMouse = nil
+		dragStartFramePos = nil
+		moved = false
+	end
+
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1
+			and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+
+		dragging = true
+		moved = false
+		pressTime = os.clock()
+		dragStartMouse = Vector2.new(input.Position.X, input.Position.Y)
+		dragStartFramePos = frame.Position
+
+		inputChangedConn = UserInputService.InputChanged:Connect(function(moveInput)
+			if not dragging then return end
+			if moveInput.UserInputType ~= Enum.UserInputType.MouseMovement
+				and moveInput.UserInputType ~= Enum.UserInputType.Touch then
+				return
+			end
+			if not dragStartMouse or not dragStartFramePos then return end
+
+			local curMouse = Vector2.new(moveInput.Position.X, moveInput.Position.Y)
+			local delta = curMouse - dragStartMouse
+
+			if math.abs(delta.X) > DRAG_THRESHOLD or math.abs(delta.Y) > DRAG_THRESHOLD then
+				moved = true
+			end
+
+			frame.Position = UDim2.new(
+				dragStartFramePos.X.Scale,
+				dragStartFramePos.X.Offset + delta.X,
+				dragStartFramePos.Y.Scale,
+				dragStartFramePos.Y.Offset + delta.Y
+			)
+		end)
+
+		inputEndedConn = UserInputService.InputEnded:Connect(function(endInput)
+			if endInput.UserInputType ~= Enum.UserInputType.MouseButton1
+				and endInput.UserInputType ~= Enum.UserInputType.Touch then
+				return
+			end
+
+			local elapsed = os.clock() - pressTime
+			local wasClick = (not moved) and elapsed <= CLICK_MAX_TIME
+
+			stopTracking()
+
+			if wasClick then
+				onClick()
+			end
+		end)
+	end)
+end
+
+local FINAL_W = 340
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.Size = UDim2.new(0, FINAL_W, 0, 0)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.BackgroundColor3 = BG_MAIN
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Visible = false
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 22)
+mainCorner.Parent = mainFrame
+
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = BORDER
+mainStroke.Thickness = 2.5
+mainStroke.Transparency = 0
+mainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+mainStroke.Parent = mainFrame
+
+local mainStuds = Instance.new("ImageLabel")
+mainStuds.Name = "StudsPattern"
+mainStuds.Size = UDim2.new(1, 0, 1, 0)
+mainStuds.Position = UDim2.new(0, 0, 0, 0)
+mainStuds.BackgroundTransparency = 1
+mainStuds.Image = "rbxassetid://7447638591"
+mainStuds.ImageColor3 = Color3.fromRGB(255, 235, 210)
+mainStuds.ImageTransparency = 0.7
+mainStuds.ScaleType = Enum.ScaleType.Tile
+mainStuds.TileSize = UDim2.new(0, 26, 0, 26)
+mainStuds.ZIndex = 0
+mainStuds.Parent = mainFrame
+
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 58)
+topBar.Position = UDim2.new(0, 0, 0, 0)
+topBar.BackgroundColor3 = BG_TOP
+topBar.BorderSizePixel = 0
+topBar.ZIndex = 2
+topBar.Parent = mainFrame
+
+local topBarCorner = Instance.new("UICorner")
+topBarCorner.CornerRadius = UDim.new(0, 22)
+topBarCorner.Parent = topBar
+
+local topBarMask = Instance.new("Frame")
+topBarMask.Size = UDim2.new(1, 0, 0, 30)
+topBarMask.Position = UDim2.new(0, 0, 1, -30)
+topBarMask.BackgroundColor3 = BG_TOP
+topBarMask.BorderSizePixel = 0
+topBarMask.ZIndex = 2
+topBarMask.Parent = topBar
+
+local topBarAccent = Instance.new("Frame")
+topBarAccent.Size = UDim2.new(1, 0, 0, 3)
+topBarAccent.Position = UDim2.new(0, 0, 1, -3)
+topBarAccent.BackgroundColor3 = ACCENT
+topBarAccent.BorderSizePixel = 0
+topBarAccent.ZIndex = 3
+topBarAccent.Parent = topBar
+
+local nutButton = Instance.new("TextButton")
+nutButton.Name = "NutButton"
+nutButton.Size = UDim2.new(0, 46, 0, 46)
+nutButton.Position = UDim2.new(0, 8, 0, 6)
+nutButton.BackgroundColor3 = BG_BTN
+nutButton.BorderSizePixel = 0
+nutButton.Text = ""
+nutButton.AutoButtonColor = false
+nutButton.ZIndex = 6
+nutButton.Parent = topBar
+
+local nutBtnCorner = Instance.new("UICorner")
+nutBtnCorner.CornerRadius = UDim.new(0, 12)
+nutBtnCorner.Parent = nutButton
+
+local nutBtnStroke = Instance.new("UIStroke")
+nutBtnStroke.Color = BORDER_SOFT
+nutBtnStroke.Thickness = 1.5
+nutBtnStroke.Transparency = 0.15
+nutBtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+nutBtnStroke.Parent = nutButton
+
+local nutBtnGradient = Instance.new("UIGradient")
+nutBtnGradient.Rotation = 90
+nutBtnGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, BG_BTN_TOP),
+	ColorSequenceKeypoint.new(1, BG_BTN_BOT),
+})
+nutBtnGradient.Parent = nutButton
+
+local nutIconSmall = Instance.new("ImageLabel")
+nutIconSmall.Size = UDim2.new(1, -12, 1, -12)
+nutIconSmall.Position = UDim2.new(0, 6, 0, 6)
+nutIconSmall.BackgroundTransparency = 1
+nutIconSmall.Image = NUT_ICON
+nutIconSmall.ZIndex = 7
+nutIconSmall.Parent = nutButton
+
+nutButton.MouseEnter:Connect(function()
+	TweenService:Create(nutBtnStroke, TweenInfo.new(0.15), { Transparency = 0, Color = ACCENT }):Play()
+end)
+
+nutButton.MouseLeave:Connect(function()
+	TweenService:Create(nutBtnStroke, TweenInfo.new(0.15), { Transparency = 0.15, Color = BORDER_SOFT }):Play()
+end)
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -70, 1, 0)
+titleLabel.Position = UDim2.new(0, 64, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Укради вскипяти яичко"
+titleLabel.TextColor3 = ACCENT
+titleLabel.Font = Enum.Font.GothamBlack
+titleLabel.TextSize = 18
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.ZIndex = 4
+titleLabel.Parent = topBar
+
+local floatingNut = Instance.new("TextButton")
+floatingNut.Name = "FloatingNut"
+floatingNut.AnchorPoint = Vector2.new(0.5, 0.5)
+floatingNut.Size = UDim2.new(0, 72, 0, 72)
+floatingNut.Position = UDim2.new(0.5, 0, 0.5, 0)
+floatingNut.BackgroundColor3 = BG_MAIN
+floatingNut.BorderSizePixel = 0
+floatingNut.Text = ""
+floatingNut.AutoButtonColor = false
+floatingNut.Active = true
+floatingNut.Visible = false
+floatingNut.ZIndex = 100
+floatingNut.Parent = screenGui
+
+local floatCorner = Instance.new("UICorner")
+floatCorner.CornerRadius = UDim.new(0, 20)
+floatCorner.Parent = floatingNut
+
+local floatStroke = Instance.new("UIStroke")
+floatStroke.Color = ACCENT
+floatStroke.Thickness = 2.5
+floatStroke.Transparency = 0.15
+floatStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+floatStroke.Parent = floatingNut
+
+local floatGradient = Instance.new("UIGradient")
+floatGradient.Rotation = 90
+floatGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, BG_BTN_TOP),
+	ColorSequenceKeypoint.new(1, BG_BTN_BOT),
+})
+floatGradient.Parent = floatingNut
+
+local floatStuds = Instance.new("ImageLabel")
+floatStuds.Size = UDim2.new(1, 0, 1, 0)
+floatStuds.BackgroundTransparency = 1
+floatStuds.Image = "rbxassetid://7447638591"
+floatStuds.ImageColor3 = Color3.fromRGB(255, 235, 210)
+floatStuds.ImageTransparency = 0.75
+floatStuds.ScaleType = Enum.ScaleType.Tile
+floatStuds.TileSize = UDim2.new(0, 22, 0, 22)
+floatStuds.ZIndex = 1
+floatStuds.Parent = floatingNut
+
+local floatIcon = Instance.new("ImageLabel")
+floatIcon.Size = UDim2.new(1, -20, 1, -20)
+floatIcon.Position = UDim2.new(0, 10, 0, 10)
+floatIcon.BackgroundTransparency = 1
+floatIcon.Image = NUT_ICON
+floatIcon.ZIndex = 3
+floatIcon.Parent = floatingNut
+
+floatingNut.MouseEnter:Connect(function()
+	TweenService:Create(floatStroke, TweenInfo.new(0.15), { Transparency = 0 }):Play()
+end)
+
+floatingNut.MouseLeave:Connect(function()
+	TweenService:Create(floatStroke, TweenInfo.new(0.15), { Transparency = 0.15 }):Play()
+end)
+
+local SWITCH_TWEEN = TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local COLOR_TWEEN  = TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local COLLAPSE_TWEEN = TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local FADE_TWEEN = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local ROW_HEIGHT = 52
+local ROW_GAP = 16
+local KNOB_PAD = 4
+local TRACK_W = 52
+local TRACK_H = 28
+local KNOB_SIZE = TRACK_H - KNOB_PAD * 2
+local KNOB_ON_X = TRACK_W - KNOB_SIZE - KNOB_PAD
+
+local fadeTargets: {Instance} = {}
+local fadeOriginal: {[Instance]: {[string]: any}} = {}
+
+local function captureFadeState(inst: Instance)
+	if fadeOriginal[inst] then return end
+
+	local snap = {}
+	if inst:IsA("TextLabel") or inst:IsA("TextButton") then
+		snap.TextTransparency = inst.TextTransparency
+		snap.BackgroundTransparency = inst.BackgroundTransparency
+	elseif inst:IsA("Frame") then
+		snap.BackgroundTransparency = inst.BackgroundTransparency
+	elseif inst:IsA("ImageLabel") or inst:IsA("ImageButton") then
+		snap.ImageTransparency = inst.ImageTransparency
+		snap.BackgroundTransparency = inst.BackgroundTransparency
+	elseif inst:IsA("UIStroke") then
+		snap.Transparency = inst.Transparency
+	end
+	fadeOriginal[inst] = snap
+	table.insert(fadeTargets, inst)
+end
+
+local function registerContent(inst: Instance)
+	for _, d in ipairs(inst:GetDescendants()) do
+		captureFadeState(d)
+	end
+	captureFadeState(inst)
+end
+
+local function fadeTo(target: number)
+	for _, obj in ipairs(fadeTargets) do
+		if not obj.Parent then continue end
+		local orig = fadeOriginal[obj]
+		if not orig then continue end
+
+		local props: {[string]: any} = {}
+		for key, value in pairs(orig) do
+			if type(value) == "number" then
+				props[key] = target
+			end
+		end
+		if next(props) then
+			TweenService:Create(obj, FADE_TWEEN, props):Play()
+		end
+	end
+end
+
+local function fadeBack()
+	for _, obj in ipairs(fadeTargets) do
+		if not obj.Parent then continue end
+		local orig = fadeOriginal[obj]
+		if not orig then continue end
+
+		local props: {[string]: any} = {}
+		for key, value in pairs(orig) do
+			if type(value) == "number" then
+				props[key] = value
+			end
+		end
+		if next(props) then
+			TweenService:Create(obj, FADE_TWEEN, props):Play()
+		end
+	end
+end
+
+local function buildToggle(yOffset: number, labelText: string)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, -34, 0, ROW_HEIGHT)
+	btn.Position = UDim2.new(0, 17, 0, yOffset)
+	btn.BackgroundColor3 = BG_BTN
+	btn.BorderSizePixel = 0
+	btn.Text = ""
+	btn.AutoButtonColor = false
+	btn.ZIndex = 4
+	btn.Parent = mainFrame
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 14)
+	corner.Parent = btn
+
+	local btnGradient = Instance.new("UIGradient")
+	btnGradient.Rotation = 90
+	btnGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, BG_BTN_TOP),
+		ColorSequenceKeypoint.new(1, BG_BTN_BOT),
+	})
+	btnGradient.Parent = btn
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = BORDER_SOFT
+	stroke.Thickness = 1.5
+	stroke.Transparency = 0.1
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = btn
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -TRACK_W - 42, 1, 0)
+	label.Position = UDim2.new(0, 20, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = labelText
+	label.TextColor3 = TEXT_MAIN
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 16
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextTruncate = Enum.TextTruncate.AtEnd
+	label.ZIndex = 6
+	label.Parent = btn
+
+	local track = Instance.new("Frame")
+	track.Size = UDim2.new(0, TRACK_W, 0, TRACK_H)
+	track.Position = UDim2.new(1, -TRACK_W - 14, 0.5, -TRACK_H / 2)
+	track.BackgroundColor3 = TRACK_OFF
+	track.BorderSizePixel = 0
+	track.ZIndex = 6
+	track.Parent = btn
+
+	local trackCorner = Instance.new("UICorner")
+	trackCorner.CornerRadius = UDim.new(1, 0)
+	trackCorner.Parent = track
+
+	local trackStroke = Instance.new("UIStroke")
+	trackStroke.Color = TRACK_OFF_D
+	trackStroke.Thickness = 1
+	trackStroke.Transparency = 0.25
+	trackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	trackStroke.Parent = track
+
+	local knobShadow = Instance.new("Frame")
+	knobShadow.Size = UDim2.new(0, KNOB_SIZE, 0, KNOB_SIZE)
+	knobShadow.Position = UDim2.new(0, KNOB_PAD, 0, KNOB_PAD + 1)
+	knobShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	knobShadow.BackgroundTransparency = 0.55
+	knobShadow.BorderSizePixel = 0
+	knobShadow.ZIndex = 7
+	knobShadow.Parent = track
+
+	local knobShadowCorner = Instance.new("UICorner")
+	knobShadowCorner.CornerRadius = UDim.new(1, 0)
+	knobShadowCorner.Parent = knobShadow
+
+	local knob = Instance.new("Frame")
+	knob.Size = UDim2.new(0, KNOB_SIZE, 0, KNOB_SIZE)
+	knob.Position = UDim2.new(0, KNOB_PAD, 0, KNOB_PAD)
+	knob.BackgroundColor3 = KNOB_COLOR
+	knob.BorderSizePixel = 0
+	knob.ZIndex = 8
+	knob.Parent = track
+
+	local knobCorner = Instance.new("UICorner")
+	knobCorner.CornerRadius = UDim.new(1, 0)
+	knobCorner.Parent = knob
+
+	local knobGradient = Instance.new("UIGradient")
+	knobGradient.Rotation = 90
+	knobGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(1, KNOB_SHADE),
+	})
+	knobGradient.Parent = knob
+
+	local knobStroke = Instance.new("UIStroke")
+	knobStroke.Color = Color3.fromRGB(140, 145, 152)
+	knobStroke.Thickness = 1
+	knobStroke.Transparency = 0.35
+	knobStroke.Parent = knob
+
+	registerContent(btn)
+
+	return {
+		button = btn,
+		stroke = stroke,
+		track = track,
+		trackStroke = trackStroke,
+		knob = knob,
+		knobShadow = knobShadow,
+		label = label,
+	}
+end
+
+local function setToggleVisual(state: boolean, refs, skipAnimation: boolean?)
+	local info = skipAnimation and TweenInfo.new(0) or SWITCH_TWEEN
+	local cinfo = skipAnimation and TweenInfo.new(0) or COLOR_TWEEN
+
+	if state then
+		TweenService:Create(refs.knob, info, {
+			Position = UDim2.new(0, KNOB_ON_X, 0, KNOB_PAD),
+		}):Play()
+		TweenService:Create(refs.knobShadow, info, {
+			Position = UDim2.new(0, KNOB_ON_X, 0, KNOB_PAD + 1),
+		}):Play()
+		TweenService:Create(refs.track, cinfo, { BackgroundColor3 = GREEN }):Play()
+		TweenService:Create(refs.trackStroke, cinfo, { Color = GREEN_DARK }):Play()
+		TweenService:Create(refs.stroke, cinfo, { Color = ACCENT, Transparency = 0.05 }):Play()
+		TweenService:Create(refs.label, cinfo, { TextColor3 = ACCENT }):Play()
+	else
+		TweenService:Create(refs.knob, info, {
+			Position = UDim2.new(0, KNOB_PAD, 0, KNOB_PAD),
+		}):Play()
+		TweenService:Create(refs.knobShadow, info, {
+			Position = UDim2.new(0, KNOB_PAD, 0, KNOB_PAD + 1),
+		}):Play()
+		TweenService:Create(refs.track, cinfo, { BackgroundColor3 = TRACK_OFF }):Play()
+		TweenService:Create(refs.trackStroke, cinfo, { Color = TRACK_OFF_D }):Play()
+		TweenService:Create(refs.stroke, cinfo, { Color = BORDER_SOFT, Transparency = 0.1 }):Play()
+		TweenService:Create(refs.label, cinfo, { TextColor3 = TEXT_MAIN }):Play()
+	end
+end
+
+local function bindPressAnimation(refs)
+	refs.button.MouseEnter:Connect(function()
+		TweenService:Create(refs.stroke, TweenInfo.new(0.15), { Transparency = 0 }):Play()
+	end)
+
+	refs.button.MouseLeave:Connect(function()
+		if refs.stroke.Color == BORDER_SOFT then
+			TweenService:Create(refs.stroke, TweenInfo.new(0.15), { Transparency = 0.1 }):Play()
+		end
+	end)
+end
+
+local Y_CURSOR = 72
+
+local snappyRefs = buildToggle(Y_CURSOR, "Липучка")
+bindPressAnimation(snappyRefs)
+
+snappyRefs.button.MouseButton1Click:Connect(function()
+	setSnappy(not snappyEnabled)
+	setToggleVisual(snappyEnabled, snappyRefs)
+end)
+
+setToggleVisual(snappyEnabled, snappyRefs, true)
+
+Y_CURSOR += ROW_HEIGHT + ROW_GAP
+
+local divider2 = Instance.new("Frame")
+divider2.Size = UDim2.new(1, -34, 0, 1)
+divider2.Position = UDim2.new(0, 17, 0, Y_CURSOR - ROW_GAP / 2)
+divider2.BackgroundColor3 = BORDER_SOFT
+divider2.BackgroundTransparency = 0.4
+divider2.BorderSizePixel = 0
+divider2.ZIndex = 3
+divider2.Parent = mainFrame
+registerContent(divider2)
+
+local rangeEnabled = false
+local RANGE_VALUE = 15
+
+local rangeRefs = buildToggle(Y_CURSOR, "Дальность кнопок")
+bindPressAnimation(rangeRefs)
+
+rangeRefs.button.MouseButton1Click:Connect(function()
+	rangeEnabled = not rangeEnabled
+	setProximityRange(rangeEnabled and RANGE_VALUE or 10)
+	setToggleVisual(rangeEnabled, rangeRefs)
+end)
+
+setToggleVisual(rangeEnabled, rangeRefs, true)
+
+Y_CURSOR += ROW_HEIGHT + ROW_GAP
+
+local divider3 = Instance.new("Frame")
+divider3.Size = UDim2.new(1, -34, 0, 1)
+divider3.Position = UDim2.new(0, 17, 0, Y_CURSOR - ROW_GAP / 2)
+divider3.BackgroundColor3 = BORDER_SOFT
+divider3.BackgroundTransparency = 0.4
+divider3.BorderSizePixel = 0
+divider3.ZIndex = 3
+divider3.Parent = mainFrame
+registerContent(divider3)
+
+local TRAP_NAME = "PlayerTrap"
+local HIGHLIGHT_NAME = "CortyaTrapHighlight"
+
+local trapESPEnabled = false
+local trackedTraps: {[Instance]: Highlight} = {}
+
+local function attachHighlight(part: BasePart)
+	if trackedTraps[part] then return end
+
+	local hl = Instance.new("Highlight")
+	hl.Name = HIGHLIGHT_NAME
+	hl.Adornee = part
+	hl.FillColor = ACCENT
+	hl.OutlineColor = ACCENT_LIGHT
+	hl.FillTransparency = 0.5
+	hl.OutlineTransparency = 0.05
+	hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	hl.Parent = part
+
+	trackedTraps[part] = hl
+
+	part.AncestryChanged:Connect(function()
+		if not part:IsDescendantOf(game) then
+			local existing = trackedTraps[part]
+			if existing then
+				existing:Destroy()
+				trackedTraps[part] = nil
+			end
+		end
+	end)
+end
+
+local function detachAllHighlights()
+	for part, hl in pairs(trackedTraps) do
+		hl:Destroy()
+		trackedTraps[part] = nil
+	end
+end
+
+local function scanAndAttach()
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") and obj.Name == TRAP_NAME then
+			attachHighlight(obj)
+		end
+	end
+end
+
+workspace.DescendantAdded:Connect(function(obj)
+	if not trapESPEnabled then return end
+	if obj:IsA("BasePart") and obj.Name == TRAP_NAME then
+		attachHighlight(obj)
+	end
+end)
+
+local function setTrapESP(state: boolean)
+	trapESPEnabled = state
+
+	if state then
+		scanAndAttach()
+	else
+		detachAllHighlights()
+	end
+end
+
+local espRefs = buildToggle(Y_CURSOR, "ESP Ловушки")
+bindPressAnimation(espRefs)
+
+espRefs.button.MouseButton1Click:Connect(function()
+	setTrapESP(not trapESPEnabled)
+	setToggleVisual(trapESPEnabled, espRefs)
+end)
+
+setToggleVisual(trapESPEnabled, espRefs, true)
+
+Y_CURSOR += ROW_HEIGHT + ROW_GAP
+
+local divider4 = Instance.new("Frame")
+divider4.Size = UDim2.new(1, -34, 0, 1)
+divider4.Position = UDim2.new(0, 17, 0, Y_CURSOR - ROW_GAP / 2)
+divider4.BackgroundColor3 = BORDER_SOFT
+divider4.BackgroundTransparency = 0.4
+divider4.BorderSizePixel = 0
+divider4.ZIndex = 3
+divider4.Parent = mainFrame
+registerContent(divider4)
+
+local HITBOX_NAME = "Hitbox"
+
+local function isInsidePlayerTrap(inst: Instance): boolean
+	local current: Instance? = inst
+	while current do
+		if current.Name == TRAP_NAME then return true end
+		current = current.Parent
+	end
+	return false
+end
+
+local function nukeHitboxesIn(root: Instance): number
+	local removed = 0
+	for _, obj in ipairs(root:GetDescendants()) do
+		if obj:IsA("BasePart") and obj.Name == HITBOX_NAME and isInsidePlayerTrap(obj) then
+			obj:Destroy()
+			removed += 1
+		end
+	end
+	return removed
+end
+
+local function nukeAllHitboxes(): number
+	local removed = 0
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("BasePart") and obj.Name == HITBOX_NAME and isInsidePlayerTrap(obj) then
+			obj:Destroy()
+			removed += 1
+		end
+	end
+	return removed
+end
+
+local hitboxCleanerEnabled = false
+local cleanerConnection: RBXScriptConnection? = nil
+
+local function startHitboxCleaner()
+	if cleanerConnection then
+		cleanerConnection:Disconnect()
+		cleanerConnection = nil
+	end
+
+	nukeAllHitboxes()
+
+	cleanerConnection = workspace.DescendantAdded:Connect(function(obj)
+		if not hitboxCleanerEnabled then return end
+
+		if obj:IsA("BasePart") and obj.Name == HITBOX_NAME then
+			if isInsidePlayerTrap(obj) then
+				obj:Destroy()
+			end
+			return
+		end
+
+		if obj.Name == TRAP_NAME then
+			nukeHitboxesIn(obj)
+			return
+		end
+
+		if #obj:GetChildren() > 0 then
+			nukeHitboxesIn(obj)
+		end
+	end)
+end
+
+local function stopHitboxCleaner()
+	if cleanerConnection then
+		cleanerConnection:Disconnect()
+		cleanerConnection = nil
+	end
+end
+
+local function setHitboxCleaner(state: boolean)
+	hitboxCleanerEnabled = state
+	if state then
+		startHitboxCleaner()
+	else
+		stopHitboxCleaner()
+	end
+end
+
+local cleanRefs = buildToggle(Y_CURSOR, "Anti Ловушки")
+bindPressAnimation(cleanRefs)
+
+cleanRefs.button.MouseButton1Click:Connect(function()
+	setHitboxCleaner(not hitboxCleanerEnabled)
+	setToggleVisual(hitboxCleanerEnabled, cleanRefs)
+end)
+
+setToggleVisual(hitboxCleanerEnabled, cleanRefs, true)
+
+Y_CURSOR += ROW_HEIGHT + ROW_GAP
+
+local nukeNowButton = Instance.new("TextButton")
+nukeNowButton.Size = UDim2.new(1, -34, 0, 44)
+nukeNowButton.Position = UDim2.new(0, 17, 0, Y_CURSOR)
+nukeNowButton.BackgroundColor3 = ACCENT
+nukeNowButton.BorderSizePixel = 0
+nukeNowButton.Text = ""
+nukeNowButton.AutoButtonColor = false
+nukeNowButton.ZIndex = 4
+nukeNowButton.Parent = mainFrame
+registerContent(nukeNowButton)
+
+local nukeCorner = Instance.new("UICorner")
+nukeCorner.CornerRadius = UDim.new(0, 12)
+nukeCorner.Parent = nukeNowButton
+
+local nukeGradient = Instance.new("UIGradient")
+nukeGradient.Rotation = 90
+nukeGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, ACCENT_LIGHT),
+	ColorSequenceKeypoint.new(1, ACCENT),
+})
+nukeGradient.Parent = nukeNowButton
+
+local nukeStroke = Instance.new("UIStroke")
+nukeStroke.Color = ACCENT_DARK
+nukeStroke.Thickness = 1.5
+nukeStroke.Transparency = 0.1
+nukeStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+nukeStroke.Parent = nukeNowButton
+
+local nukeText = Instance.new("TextLabel")
+nukeText.Size = UDim2.new(1, -16, 1, 0)
+nukeText.Position = UDim2.new(0, 8, 0, 0)
+nukeText.BackgroundTransparency = 1
+nukeText.Text = "СНЕСТИ ВСЁ СЕЙЧАС"
+nukeText.TextColor3 = Color3.fromRGB(40, 24, 0)
+nukeText.Font = Enum.Font.GothamBlack
+nukeText.TextSize = 15
+nukeText.ZIndex = 6
+nukeText.Parent = nukeNowButton
+
+nukeNowButton.MouseEnter:Connect(function()
+	TweenService:Create(nukeStroke, TweenInfo.new(0.15), { Transparency = 0 }):Play()
+end)
+
+nukeNowButton.MouseLeave:Connect(function()
+	TweenService:Create(nukeStroke, TweenInfo.new(0.15), { Transparency = 0.1 }):Play()
+end)
+
+nukeNowButton.MouseButton1Click:Connect(function()
+	local removed = nukeAllHitboxes()
+	nukeText.Text = ("СНЕСЕНО: %d"):format(removed)
+	task.wait(1.2)
+	if nukeText.Parent then
+		nukeText.Text = "СНЕСТИ ВСЁ СЕЙЧАС"
+	end
+end)
+
+Y_CURSOR += 44
+
+local footer = Instance.new("TextLabel")
+footer.Size = UDim2.new(1, -34, 0, 18)
+footer.Position = UDim2.new(0, 17, 0, Y_CURSOR + 12)
+footer.BackgroundTransparency = 1
+footer.Text = "кирилл...🦴"
+footer.TextColor3 = TEXT_DIM
+footer.Font = Enum.Font.GothamBold
+footer.TextSize = 13
+footer.TextXAlignment = Enum.TextXAlignment.Right
+footer.ZIndex = 4
+footer.Parent = mainFrame
+registerContent(footer)
+
+local FINAL_H = Y_CURSOR + 42
+
+local frameDragging = false
+local frameDragStartMouse: Vector2? = nil
+local frameDragStartPos: UDim2? = nil
+
+topBar.InputBegan:Connect(function(input)
+	if input.UserInputType ~= Enum.UserInputType.MouseButton1
+		and input.UserInputType ~= Enum.UserInputType.Touch then
+		return
+	end
+	frameDragging = true
+	frameDragStartMouse = Vector2.new(input.Position.X, input.Position.Y)
+	frameDragStartPos = mainFrame.Position
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if not frameDragging then return end
+	if input.UserInputType ~= Enum.UserInputType.MouseMovement
+		and input.UserInputType ~= Enum.UserInputType.Touch then
+		return
+	end
+	if not frameDragStartMouse or not frameDragStartPos then return end
+
+	local cur = Vector2.new(input.Position.X, input.Position.Y)
+	local delta = cur - frameDragStartMouse
+
+	mainFrame.Position = UDim2.new(
+		frameDragStartPos.X.Scale,
+		frameDragStartPos.X.Offset + delta.X,
+		frameDragStartPos.Y.Scale,
+		frameDragStartPos.Y.Offset + delta.Y
+	)
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType ~= Enum.UserInputType.MouseButton1
+		and input.UserInputType ~= Enum.UserInputType.Touch then
+		return
+	end
+	frameDragging = false
+	frameDragStartMouse = nil
+	frameDragStartPos = nil
+end)
+
+local collapsed = true
+local animating = false
+
+local function collapseGui()
+	if animating or collapsed then return end
+	animating = true
+	collapsed = true
+
+	floatingNut.Position = UDim2.new(
+		0,
+		mainFrame.AbsolutePosition.X + mainFrame.AbsoluteSize.X / 2,
+		0,
+		mainFrame.AbsolutePosition.Y + mainFrame.AbsoluteSize.Y / 2
+	)
+	floatingNut.Size = UDim2.new(0, 0, 0, 0)
+	floatingNut.Visible = true
+
+	fadeTo(1)
+
+	task.wait(FADE_TWEEN.Time)
+
+	local t = TweenService:Create(mainFrame, COLLAPSE_TWEEN, {
+		Size = UDim2.new(0, 0, 0, 0),
+		BackgroundTransparency = 1,
+	})
+	t:Play()
+
+	TweenService:Create(mainStroke, COLLAPSE_TWEEN, { Transparency = 1 }):Play()
+
+	task.wait(COLLAPSE_TWEEN.Time)
+
+	mainFrame.Visible = false
+	mainStroke.Transparency = 0
+	mainFrame.BackgroundTransparency = 0
+
+	local grow = TweenService:Create(floatingNut, TweenInfo.new(0.34, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, 72, 0, 72),
+	})
+	grow:Play()
+	grow.Completed:Wait()
+
+	animating = false
+end
+
+local function expandGui()
+	if animating or not collapsed then return end
+	animating = true
+	collapsed = false
+
+	local shrink = TweenService:Create(floatingNut, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, 0, 0, 0),
+	})
+	shrink:Play()
+	shrink.Completed:Wait()
+	floatingNut.Visible = false
+
+	mainFrame.Position = floatingNut.Position
+	mainFrame.Visible = true
+	mainFrame.Size = UDim2.new(0, 0, 0, 0)
+	mainFrame.BackgroundTransparency = 1
+	mainStroke.Transparency = 1
+
+	local t = TweenService:Create(mainFrame, COLLAPSE_TWEEN, {
+		Size = UDim2.new(0, FINAL_W, 0, FINAL_H),
+		BackgroundTransparency = 0,
+	})
+	t:Play()
+
+	TweenService:Create(mainStroke, COLLAPSE_TWEEN, { Transparency = 0 }):Play()
+
+	task.delay(COLLAPSE_TWEEN.Time * 0.4, function()
+		fadeBack()
+	end)
+
+	t.Completed:Wait()
+
+	animating = false
+end
+
+makeClickOrDrag(nutButton, function()
+	local baseY = nutButton.Position.Y.Offset
+	TweenService:Create(nutButton, TweenInfo.new(0.08), {
+		Size = UDim2.new(0, 43, 0, 43),
+		Position = UDim2.new(0, 9, 0, baseY + 1),
+	}):Play()
+	task.wait(0.08)
+	TweenService:Create(nutButton, TweenInfo.new(0.08), {
+		Size = UDim2.new(0, 46, 0, 46),
+		Position = UDim2.new(0, 8, 0, baseY),
+	}):Play()
+
+	if collapsed then
+		expandGui()
+	else
+		collapseGui()
+	end
+end)
+
+makeClickOrDrag(floatingNut, function()
+	if not collapsed then return end
+	expandGui()
+end)
+
+task.spawn(function()
+	while not loadingDone do
+		task.wait(0.1)
+	end
+
+	task.wait(0.2)
+
+	floatingNut.Visible = true
+	floatingNut.Size = UDim2.new(0, 0, 0, 0)
+
+	local grow = TweenService:Create(floatingNut, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = UDim2.new(0, 72, 0, 72),
+	})
+	grow:Play()
+end)
