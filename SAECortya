@@ -1,3 +1,4 @@
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -291,10 +292,9 @@ end)
 local DRAG_THRESHOLD = 6
 local CLICK_MAX_TIME = 0.25
 
-local function makeClickOrDrag(frame: GuiObject, onClick: () -> ())
-	local dragging = false
-	local dragStartMouse: Vector2? = nil
-	local dragStartFramePos: UDim2? = nil
+local function makeClickOnly(frame: GuiObject, onClick: () -> ())
+	local pressing = false
+	local startMouse: Vector2? = nil
 	local pressTime = 0
 	local moved = false
 	local inputChangedConn: RBXScriptConnection? = nil
@@ -303,9 +303,8 @@ local function makeClickOrDrag(frame: GuiObject, onClick: () -> ())
 	local function stopTracking()
 		if inputChangedConn then inputChangedConn:Disconnect() inputChangedConn = nil end
 		if inputEndedConn then inputEndedConn:Disconnect() inputEndedConn = nil end
-		dragging = false
-		dragStartMouse = nil
-		dragStartFramePos = nil
+		pressing = false
+		startMouse = nil
 		moved = false
 	end
 
@@ -315,32 +314,95 @@ local function makeClickOrDrag(frame: GuiObject, onClick: () -> ())
 			return
 		end
 
-		dragging = true
+		pressing = true
 		moved = false
 		pressTime = os.clock()
-		dragStartMouse = Vector2.new(input.Position.X, input.Position.Y)
-		dragStartFramePos = frame.Position
+		startMouse = Vector2.new(input.Position.X, input.Position.Y)
 
 		inputChangedConn = UserInputService.InputChanged:Connect(function(moveInput)
-			if not dragging then return end
+			if not pressing then return end
 			if moveInput.UserInputType ~= Enum.UserInputType.MouseMovement
 				and moveInput.UserInputType ~= Enum.UserInputType.Touch then
 				return
 			end
-			if not dragStartMouse or not dragStartFramePos then return end
+			if not startMouse then return end
 
 			local curMouse = Vector2.new(moveInput.Position.X, moveInput.Position.Y)
-			local delta = curMouse - dragStartMouse
+			local delta = curMouse - startMouse
+
+			if math.abs(delta.X) > DRAG_THRESHOLD or math.abs(delta.Y) > DRAG_THRESHOLD then
+				moved = true
+			end
+		end)
+
+		inputEndedConn = UserInputService.InputEnded:Connect(function(endInput)
+			if endInput.UserInputType ~= Enum.UserInputType.MouseButton1
+				and endInput.UserInputType ~= Enum.UserInputType.Touch then
+				return
+			end
+
+			local elapsed = os.clock() - pressTime
+			local wasClick = (not moved) and elapsed <= CLICK_MAX_TIME
+
+			stopTracking()
+
+			if wasClick then
+				onClick()
+			end
+		end)
+	end)
+end
+
+local function makeClickOrDrag(frame: GuiObject, onClick: () -> ())
+	local pressing = false
+	local startMouse: Vector2? = nil
+	local startFramePos: UDim2? = nil
+	local pressTime = 0
+	local moved = false
+	local inputChangedConn: RBXScriptConnection? = nil
+	local inputEndedConn: RBXScriptConnection? = nil
+
+	local function stopTracking()
+		if inputChangedConn then inputChangedConn:Disconnect() inputChangedConn = nil end
+		if inputEndedConn then inputEndedConn:Disconnect() inputEndedConn = nil end
+		pressing = false
+		startMouse = nil
+		startFramePos = nil
+		moved = false
+	end
+
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1
+			and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+
+		pressing = true
+		moved = false
+		pressTime = os.clock()
+		startMouse = Vector2.new(input.Position.X, input.Position.Y)
+		startFramePos = frame.Position
+
+		inputChangedConn = UserInputService.InputChanged:Connect(function(moveInput)
+			if not pressing then return end
+			if moveInput.UserInputType ~= Enum.UserInputType.MouseMovement
+				and moveInput.UserInputType ~= Enum.UserInputType.Touch then
+				return
+			end
+			if not startMouse or not startFramePos then return end
+
+			local curMouse = Vector2.new(moveInput.Position.X, moveInput.Position.Y)
+			local delta = curMouse - startMouse
 
 			if math.abs(delta.X) > DRAG_THRESHOLD or math.abs(delta.Y) > DRAG_THRESHOLD then
 				moved = true
 			end
 
 			frame.Position = UDim2.new(
-				dragStartFramePos.X.Scale,
-				dragStartFramePos.X.Offset + delta.X,
-				dragStartFramePos.Y.Scale,
-				dragStartFramePos.Y.Offset + delta.Y
+				startFramePos.X.Scale,
+				startFramePos.X.Offset + delta.X,
+				startFramePos.Y.Scale,
+				startFramePos.Y.Offset + delta.Y
 			)
 		end)
 
@@ -806,7 +868,7 @@ registerContent(divider2)
 local rangeEnabled = false
 local RANGE_VALUE = 15
 
-local rangeRefs = buildToggle(Y_CURSOR, "Ув. дальность кнопок")
+local rangeRefs = buildToggle(Y_CURSOR, "Дальность кнопок")
 bindPressAnimation(rangeRefs)
 
 rangeRefs.button.MouseButton1Click:Connect(function()
@@ -996,7 +1058,7 @@ local function setHitboxCleaner(state: boolean)
 	end
 end
 
-local cleanRefs = buildToggle(Y_CURSOR, "Anti Ловушки")
+local cleanRefs = buildToggle(Y_CURSOR, "Авто-удаление Hitbox")
 bindPressAnimation(cleanRefs)
 
 cleanRefs.button.MouseButton1Click:Connect(function()
@@ -1042,7 +1104,7 @@ local nukeText = Instance.new("TextLabel")
 nukeText.Size = UDim2.new(1, -16, 1, 0)
 nukeText.Position = UDim2.new(0, 8, 0, 0)
 nukeText.BackgroundTransparency = 1
-nukeText.Text = "СНЕСТИ ВСЕ ЛОВУШКИ"
+nukeText.Text = "СНЕСТИ ВСЁ СЕЙЧАС"
 nukeText.TextColor3 = Color3.fromRGB(40, 24, 0)
 nukeText.Font = Enum.Font.GothamBlack
 nukeText.TextSize = 15
@@ -1062,7 +1124,7 @@ nukeNowButton.MouseButton1Click:Connect(function()
 	nukeText.Text = ("СНЕСЕНО: %d"):format(removed)
 	task.wait(1.2)
 	if nukeText.Parent then
-		nukeText.Text = "СНЕСТИ ВСЕ ЛОВУШКИ"
+		nukeText.Text = "СНЕСТИ ВСЁ СЕЙЧАС"
 	end
 end)
 
@@ -1083,49 +1145,6 @@ registerContent(footer)
 
 local FINAL_H = Y_CURSOR + 42
 
-local frameDragging = false
-local frameDragStartMouse: Vector2? = nil
-local frameDragStartPos: UDim2? = nil
-
-topBar.InputBegan:Connect(function(input)
-	if input.UserInputType ~= Enum.UserInputType.MouseButton1
-		and input.UserInputType ~= Enum.UserInputType.Touch then
-		return
-	end
-	frameDragging = true
-	frameDragStartMouse = Vector2.new(input.Position.X, input.Position.Y)
-	frameDragStartPos = mainFrame.Position
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if not frameDragging then return end
-	if input.UserInputType ~= Enum.UserInputType.MouseMovement
-		and input.UserInputType ~= Enum.UserInputType.Touch then
-		return
-	end
-	if not frameDragStartMouse or not frameDragStartPos then return end
-
-	local cur = Vector2.new(input.Position.X, input.Position.Y)
-	local delta = cur - frameDragStartMouse
-
-	mainFrame.Position = UDim2.new(
-		frameDragStartPos.X.Scale,
-		frameDragStartPos.X.Offset + delta.X,
-		frameDragStartPos.Y.Scale,
-		frameDragStartPos.Y.Offset + delta.Y
-	)
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType ~= Enum.UserInputType.MouseButton1
-		and input.UserInputType ~= Enum.UserInputType.Touch then
-		return
-	end
-	frameDragging = false
-	frameDragStartMouse = nil
-	frameDragStartPos = nil
-end)
-
 local collapsed = true
 local animating = false
 
@@ -1134,12 +1153,6 @@ local function collapseGui()
 	animating = true
 	collapsed = true
 
-	floatingNut.Position = UDim2.new(
-		0,
-		mainFrame.AbsolutePosition.X + mainFrame.AbsoluteSize.X / 2,
-		0,
-		mainFrame.AbsolutePosition.Y + mainFrame.AbsoluteSize.Y / 2
-	)
 	floatingNut.Size = UDim2.new(0, 0, 0, 0)
 	floatingNut.Visible = true
 
@@ -1182,7 +1195,6 @@ local function expandGui()
 	shrink.Completed:Wait()
 	floatingNut.Visible = false
 
-	mainFrame.Position = floatingNut.Position
 	mainFrame.Visible = true
 	mainFrame.Size = UDim2.new(0, 0, 0, 0)
 	mainFrame.BackgroundTransparency = 1
@@ -1205,7 +1217,7 @@ local function expandGui()
 	animating = false
 end
 
-makeClickOrDrag(nutButton, function()
+makeClickOnly(nutButton, function()
 	local baseY = nutButton.Position.Y.Offset
 	TweenService:Create(nutButton, TweenInfo.new(0.08), {
 		Size = UDim2.new(0, 43, 0, 43),
