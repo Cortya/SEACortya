@@ -1,6 +1,5 @@
 local AUTO_RELOAD_URL = "https://raw.githubusercontent.com/Cortya/SEACortya/refs/heads/main/SAECortya"
 local AUTO_RELOAD_ENABLED = true
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
