@@ -1,8 +1,12 @@
+local AUTO_RELOAD_URL = "https://raw.githubusercontent.com/Cortya/SEACortya/refs/heads/main/SAECortya"
+local AUTO_RELOAD_ENABLED = true
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local player = Players.LocalPlayer
@@ -93,6 +97,55 @@ end
 if player.Character then setupCharacter(player.Character) end
 player.CharacterAdded:Connect(setupCharacter)
 
+-- ============================================================
+-- EXECUTOR API detection
+-- ============================================================
+local executorQueue: ((string) -> ())? = nil
+local executorName = "none"
+
+pcall(function()
+	if typeof(queue_on_teleport) == "function" then
+		executorQueue = queue_on_teleport
+		executorName = "queue_on_teleport"
+	elseif typeof(queueonteleport) == "function" then
+		executorQueue = queueonteleport
+		executorName = "queueonteleport"
+	elseif syn and typeof(syn.queue_on_teleport) == "function" then
+		executorQueue = syn.queue_on_teleport
+		executorName = "syn.queue_on_teleport"
+	elseif fluxus and typeof(fluxus.queue_on_teleport) == "function" then
+		executorQueue = fluxus.queue_on_teleport
+		executorName = "fluxus.queue_on_teleport"
+	end
+end)
+
+-- ============================================================
+-- TeleportData: прочитать состояние с прошлого сервера
+-- ============================================================
+local RESTORE_DATA: any = nil
+pcall(function()
+	local joinData = player:GetJoinData()
+	if joinData and joinData.TeleportData then
+		RESTORE_DATA = joinData.TeleportData
+	end
+end)
+
+local function rememberQueue()
+	if not AUTO_RELOAD_ENABLED then return end
+	if not executorQueue then
+		warn("[Cortya] Executor не поддерживает queue_on_teleport, авто-релоад невозможен")
+		return
+	end
+	if AUTO_RELOAD_URL == "" or AUTO_RELOAD_URL:find("USER/REPO") then
+		warn("[Cortya] AUTO_RELOAD_URL не задан — впиши raw-ссылку на скрипт")
+		return
+	end
+
+	pcall(function()
+		executorQueue(("loadstring(game:HttpGet(%q))()"):format(AUTO_RELOAD_URL))
+	end)
+end
+
 local BG_DEEP      = Color3.fromRGB(24, 26, 30)
 local BG_MAIN      = Color3.fromRGB(34, 37, 42)
 local BG_TOP       = Color3.fromRGB(44, 48, 54)
@@ -112,6 +165,10 @@ local TRACK_OFF    = Color3.fromRGB(56, 60, 66)
 local TRACK_OFF_D  = Color3.fromRGB(38, 40, 44)
 local KNOB_COLOR   = Color3.fromRGB(235, 238, 242)
 local KNOB_SHADE   = Color3.fromRGB(180, 185, 192)
+local BLUE         = Color3.fromRGB(60, 140, 255)
+local BLUE_DARK    = Color3.fromRGB(30, 80, 170)
+local BLUE_LIGHT   = Color3.fromRGB(130, 190, 255)
+local BLUE_TEXT    = Color3.fromRGB(8, 26, 52)
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "CortyaGui"
@@ -1070,6 +1127,142 @@ setToggleVisual(hitboxCleanerEnabled, cleanRefs, true)
 
 Y_CURSOR += ROW_HEIGHT + ROW_GAP
 
+-- ============================================================
+-- ServerHop
+-- ============================================================
+local hopButton = Instance.new("TextButton")
+hopButton.Size = UDim2.new(1, -34, 0, 44)
+hopButton.Position = UDim2.new(0, 17, 0, Y_CURSOR)
+hopButton.BackgroundColor3 = BLUE
+hopButton.BorderSizePixel = 0
+hopButton.Text = ""
+hopButton.AutoButtonColor = false
+hopButton.ZIndex = 4
+hopButton.Parent = mainFrame
+registerContent(hopButton)
+
+local hopCorner = Instance.new("UICorner")
+hopCorner.CornerRadius = UDim.new(0, 12)
+hopCorner.Parent = hopButton
+
+local hopGradient = Instance.new("UIGradient")
+hopGradient.Rotation = 90
+hopGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, BLUE_LIGHT),
+	ColorSequenceKeypoint.new(1, BLUE),
+})
+hopGradient.Parent = hopButton
+
+local hopStroke = Instance.new("UIStroke")
+hopStroke.Color = BLUE_DARK
+hopStroke.Thickness = 1.5
+hopStroke.Transparency = 0.1
+hopStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+hopStroke.Parent = hopButton
+
+local hopText = Instance.new("TextLabel")
+hopText.Size = UDim2.new(1, -16, 1, 0)
+hopText.Position = UDim2.new(0, 8, 0, 0)
+hopText.BackgroundTransparency = 1
+hopText.Text = "SERVER HOP"
+hopText.TextColor3 = BLUE_TEXT
+hopText.Font = Enum.Font.GothamBlack
+hopText.TextSize = 15
+hopText.ZIndex = 6
+hopText.Parent = hopButton
+
+hopButton.MouseEnter:Connect(function()
+	TweenService:Create(hopStroke, TweenInfo.new(0.15), { Transparency = 0 }):Play()
+end)
+
+hopButton.MouseLeave:Connect(function()
+	TweenService:Create(hopStroke, TweenInfo.new(0.15), { Transparency = 0.1 }):Play()
+end)
+
+local hopInProgress = false
+
+local function snapshotState(): {[string]: boolean}
+	return {
+		snappy = snappyEnabled,
+		range = rangeEnabled,
+		esp = trapESPEnabled,
+		cleaner = hitboxCleanerEnabled,
+	}
+end
+
+local function doServerHop()
+	if hopInProgress then return end
+	hopInProgress = true
+
+	hopText.Text = "ПОИСК СЕРВЕРА..."
+
+	local placeId = game.PlaceId
+	local currentJobId = game.JobId
+
+	local ok, result = pcall(function()
+		local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100"):format(placeId)
+		return HttpService:JSONDecode(game:HttpGetAsync(url))
+	end)
+
+	if not ok or not result or not result.data then
+		hopText.Text = "ОШИБКА СЕТИ"
+		task.wait(1.5)
+		hopText.Text = "SERVER HOP"
+		hopInProgress = false
+		return
+	end
+
+	local candidates = {}
+	for _, server in ipairs(result.data) do
+		if server.id and server.id ~= currentJobId
+			and server.playing and server.maxPlayers
+			and server.playing < server.maxPlayers then
+			table.insert(candidates, server.id)
+		end
+	end
+
+	if #candidates == 0 then
+		hopText.Text = "НЕТ СЕРВЕРОВ"
+		task.wait(1.5)
+		hopText.Text = "SERVER HOP"
+		hopInProgress = false
+		return
+	end
+
+	local targetJobId = candidates[math.random(1, #candidates)]
+
+	hopText.Text = "ПОДКЛЮЧЕНИЕ..."
+
+	rememberQueue()
+
+	local teleportData = snapshotState()
+	teleportData.hopMarker = true
+	teleportData.hopTime = os.time()
+
+	local teleportOk, teleportErr = pcall(function()
+		TeleportService:TeleportToPlaceInstance(placeId, targetJobId, player, teleportData)
+	end)
+
+	if not teleportOk then
+		hopText.Text = "ОШИБКА ТП"
+		warn("[ServerHop] teleport failed:", teleportErr)
+		task.wait(1.5)
+		hopText.Text = "SERVER HOP"
+		hopInProgress = false
+		return
+	end
+
+	hopText.Text = "ГОТОВО"
+	hopInProgress = false
+end
+
+hopButton.MouseButton1Click:Connect(doServerHop)
+
+Y_CURSOR += 44 + ROW_GAP
+
+-- ============================================================
+-- Nuke
+-- ============================================================
 local nukeNowButton = Instance.new("TextButton")
 nukeNowButton.Size = UDim2.new(1, -34, 0, 44)
 nukeNowButton.Position = UDim2.new(0, 17, 0, Y_CURSOR)
@@ -1144,6 +1337,32 @@ footer.Parent = mainFrame
 registerContent(footer)
 
 local FINAL_H = Y_CURSOR + 42
+
+-- ============================================================
+-- Восстановление состояния после реджойна
+-- ============================================================
+if RESTORE_DATA and RESTORE_DATA.hopMarker then
+	if RESTORE_DATA.snappy then
+		setSnappy(true)
+		setToggleVisual(true, snappyRefs, true)
+	end
+
+	if RESTORE_DATA.range then
+		rangeEnabled = true
+		setProximityRange(RANGE_VALUE)
+		setToggleVisual(true, rangeRefs, true)
+	end
+
+	if RESTORE_DATA.esp then
+		setTrapESP(true)
+		setToggleVisual(true, espRefs, true)
+	end
+
+	if RESTORE_DATA.cleaner then
+		setHitboxCleaner(true)
+		setToggleVisual(true, cleanRefs, true)
+	end
+end
 
 local collapsed = true
 local animating = false
@@ -1256,3 +1475,9 @@ task.spawn(function()
 	})
 	grow:Play()
 end)
+
+if executorQueue then
+	print(("[Cortya] Executor API: %s — авто-релоад готов"):format(executorName))
+else
+	warn("[Cortya] queue_on_teleport не найден. Авто-релоад после Server Hop не сработает.")
+end
